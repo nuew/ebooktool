@@ -28,6 +28,7 @@ $($1).epub: metadata/$1.yaml metadata/$1.epub.yaml $$(call contents,$1) $(wildca
 $($1).pdf: metadata/$1.yaml $$(call contents,$1)
 $($1).docx: metadata/$1.yaml $$(call contents,$1)
 $($1).odt: metadata/$1.yaml $$(call contents,$1)
+$($1).bbcode: metadata/$1.yaml $$(call contents,$1)
 endef
 $(foreach book,$(books),$(eval $(call book_rules,$(book))))
 
@@ -53,5 +54,12 @@ $(foreach book,$(books),$(eval $(call book_rules,$(book))))
 
 %.odt: $(filters)
 	$(PANDOC) $(PANDOCFLAGS) -t odt -o $@ $(filters-args) $(call format-inputs,$^)
+
+%.bbcode: $(EBOOKTOOL)/writers/XFBBCode.lua $(filters)
+	$(PANDOC) $(PANDOCFLAGS) \
+		-t $(filter $(EBOOKTOOL)/writers/%.lua,$^) \
+		-o $@ \
+		$(filters-args) \
+		$(call format-inputs,$^)
 
 .PHONY: all covers epub pdf docx odt clean $(books)
