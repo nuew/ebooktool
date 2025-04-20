@@ -1,0 +1,309 @@
+%!
+% Concatanate two strings
+%
+% See https://stackoverflow.com/questions/12378904/postscript-concatenate-two-strings/15740776
+/concat % a b -> ab
+{   exch dup length % get length of a
+    % get length of b and create a string of length L(a)+L(b)
+    2 index length add string
+    % create some copies of the string to allow modification, and copy a into ab
+    dup dup 4 2 roll copy length
+    4 -1 roll putinterval % copy b into ab
+} bind def
+
+% Count the spaces in the passed string.
+/countSpaces % string -> numSpaces
+{   0 exch
+    ( ) 
+    {   search
+        {   pop % pop unnecessary string from before search target
+            3 -1 roll 1 add 3 1 roll % add one to counter
+        }
+        { pop exit } % pop returned string and finish
+        ifelse
+    } loop
+} bind def
+
+% Returns the multiplier that should be applied to space width justify line
+/spaceWidthMult % lineWidth string -> spaceWidthMult
+{   dup countSpaces % count spaces in string
+    dup 0 gt % do we have more than 0?
+    { 3 1 roll stringwidth pop sub exch div } % divide spaces by excess width
+    { pop pop pop 1 } % no spaces; clean stack and return 1 as a sane default
+    ifelse
+} bind def
+
+% Returns the last word of a string, along with the remainder thereof.
+/lastWord % string -> lastWord rest
+{   dup 0 exch ( )
+    {   search
+        {   length 4 -1 roll add % add pre length to count
+            1 add % account for extra space
+            3 1 roll % reset stack for next search
+        } 
+        { exit }
+        ifelse
+    } loop
+    3 1 roll 1 sub % get rest length, subtract extra space
+    0 exch getinterval % get substring of appropriate length
+} bind def
+
+% Move to the begining of the next line
+/newLine % line_height left_margin -> -
+{   % get current position, subtract line height from Y, and move to that and
+    % supplied left margin
+    currentpoint exch pop 3 -1 roll sub moveto
+} bind def
+
+% Justifies the passed string as a paragraph between leftMargin and rightMargin.
+%
+% The movement this function does is kept, as a side effect.
+% This proc does NOT add a blank line at the end of the paragraph.
+%
+% Useful documentation:
+%   - Acumen Journal, July 2003 & January 2006;
+%   - Simple Text Setting Calculations for PostScript Language Drivers
+/showJustified % string lineHeight leftMargin rightMargin -> -
+{   1 index sub % line width
+    0 string % initial remainder
+    5 2 roll % reorder stack for loop use
+    {   2 index length 0 eq { exit } if % stop when no more lines
+        4 index 3 index spaceWidthMult % space width multiplier
+        dup 1 ge % does the current line fit?
+        {   4 index length 0 ne % ensure this isn't the last line via remainder
+            {   % it's not; print the current line with expanded spaces
+                0 32 6 -1 roll widthshow
+                2 copy newLine % and jump to the next line
+                0 string 4 1 roll % create a new remainder
+            }
+            {   % it is; print the last line normally
+                pop % discard unnecessary space width multiplier
+                4 2 roll show % show current line, consuming it
+                pop % destroy empty remainder
+                newLine % jump to next line
+                exit
+            }
+            ifelse
+        }
+        {   pop % discard invalid space width multiplier 
+            4 2 roll lastWord % get last word of current line
+            5 1 roll ( ) concat exch concat % append remainder to its string
+            4 1 roll % reset stack to proper position
+        }
+        ifelse
+    } loop
+    pop % get rid of line width
+} bind def
+
+% Show a justified paragraph with a blank line at the end.
+%
+% Movement is a side effect, as with showJustified
+/showJustifiedParagraph % string lineHeight leftMargin rightMargin -> -
+{   3 copy pop 6 2 roll % save lineHeight and leftMargin for later
+    showJustified
+    newLine
+} bind def
+
+% Setup the page, and implement local configuration
+/pageSetup % textColor fillColor spineWidth -> fullWidth spineEnd
+{   dup PAGE_WIDTH 2 mul add % full width
+    dup EXTRA_WIDTH add % document width
+    PAGE_HEIGHT EXTRA_HEIGHT add % document height
+
+    % page setup [document width, document height] 
+    % should automatically set the media box
+    << /PageSize [4 index 4 index] >> setpagedevice
+
+    % set PDF/X distiller params
+    << /PDFXTrimBoxToMediaBoxOffset [EXTRA_WIDTH 2 div BLEED add dup
+                                     EXTRA_HEIGHT 2 div BLEED add dup]
+       /PDFXSetBleedBoxToMediaBox false
+       /PDFXBleedBoxToTrimBoxOffset [BLEED dup 2 copy]
+    >> setdistillerparams
+
+    % center page in document
+    PAGE_HEIGHT sub 2 div % doc height - page height / 2
+    exch 2 index sub 2 div % doc width - full width / 2 
+    exch translate % swap for argument order and translate
+
+    % set clip along with fill and text colors
+    0 0 2 index PAGE_HEIGHT rectclip % clip to page, excluding extra w/h
+    8 2 roll % move spine & full widths down
+    setrgbcolor clippath fill % Fill Color
+    setrgbcolor % Text Color
+
+    exch PAGE_WIDTH add % Spine End
+} bind def
+
+% Read cover image (WidthxHeight) from filename and display starting at startXPos
+%
+% you *SHOULD* be able to do PNG with:
+% << /Predictor 15 /Columns IMG_WIDTH /Colors 4 /BitsPerComponent 2 >> /FlateDecode
+% (for 8bpp RGBA) but I can't figure it out, so converting to JPEG it is
+/showCoverImage % filename width height startXPos -> -
+{   gsave
+
+    SPINE_CLEAR add BLEED translate % move to correct x,y position
+
+    % set output size
+    PAGE_WIDTH SPINE_CLEAR sub BLEED sub PAGE_HEIGHT BLEED sub BLEED sub scale
+
+    % show image
+    8 % image width/height/bits per color channel
+    [3 index 0 0 5 index neg 0 7 index] % magic transform array
+    5 -1 roll (r) file /DCTDecode filter % load JPEG image from file
+    false 3 colorimage % Draw color image with three output channels
+    
+    grestore
+} bind def
+
+/showSpine % title author fontSizeDivisor spineWidth spineEnd -> -
+{   gsave
+
+    % Set title/author metadata
+    % (creator goes here because where else would i put it?)
+    [ /Title 6 index ( \(Cover\)) concat
+      /Author 7 index
+      /Creator (Emma "nuew" Welker)
+    /DOCINFO pdfmark
+
+    1 index 4 2 roll
+    exch div SPINE_FONT exch selectfont
+    3 div 2 mul sub % text vertical position
+    3 1 roll
+
+    270 rotate
+    dup stringwidth pop MARGIN add neg 3 index moveto show
+    exch PAGE_HEIGHT MARGIN sub neg exch moveto show
+
+    grestore
+} bind def
+
+/showReviews % leftPassages leftOffset rightPassages rightOffset lineBottom lineTop -> -
+{   gsave
+
+    REVIEWS_FONT REVIEWS_FONT_SIZE selectfont % set font
+    4 2 roll % move arguments into convienent position
+
+    % show right review column
+    REVIEWS_START_OF_TEXT exch sub REVIEWS_RIGHT_LEFT_MARGIN exch moveto
+    {   REVIEWS_LINE_HEIGHT
+        REVIEWS_RIGHT_LEFT_MARGIN
+        REVIEWS_RIGHT_RIGHT_MARGIN
+        showJustifiedParagraph
+    } forall
+
+    % draw reviews center bar
+    1 setlinewidth
+    newpath
+    HALF_PAGE REVIEWS_START_OF_TEXT 3 -1 roll sub moveto
+    HALF_PAGE REVIEWS_START_OF_TEXT 3 -1 roll sub lineto
+    stroke
+
+    % show left review column
+    REVIEWS_START_OF_TEXT exch sub REVIEWS_LEFT_LEFT_MARGIN exch moveto
+    {   REVIEWS_LINE_HEIGHT
+        REVIEWS_LEFT_LEFT_MARGIN
+        REVIEWS_LEFT_RIGHT_MARGIN
+        showJustifiedParagraph
+    } forall
+
+    grestore
+} bind def
+
+/showSummary % passages startOfText -> -
+{   gsave
+
+    SUMMARY_FONT SUMMARY_FONT_SIZE selectfont % set font
+    PAGE_HEIGHT MARGIN sub exch sub MARGIN exch moveto % move to STX
+    { SUMMARY_LINE_HEIGHT LEFT_MARGIN RIGHT_MARGIN showJustifiedParagraph } forall
+
+    grestore
+} bind def
+
+% Display the empty space for the status rectangle in its corner
+/showStatusRect % - -> -
+{   gsave
+
+    1 1 1 setrgbcolor % White
+    newpath
+    BOX_LEFT BOX_TOP moveto
+    BOX_LEFT BOX_BOTTOM lineto
+    BOX_RIGHT BOX_BOTTOM lineto
+    BOX_RIGHT BOX_TOP lineto
+    fill
+
+    grestore
+} bind def
+
+/showPubInfo % passages -> -
+{   gsave
+
+    PUB_INFO_FONT PUB_INFO_FONT_SIZE selectfont % set font
+    LEFT_MARGIN PUB_INFO_START_OF_TEXT moveto % move to Start of Text
+    { PUB_INFO_LINE_HEIGHT LEFT_MARGIN PUB_INFO_RIGHT_MARGIN showJustified } forall
+
+    grestore
+} bind def
+
+/debugLines % fullWidth spineEnd -> -
+{   DEBUG
+    {   gsave
+
+        1 setlinejoin
+        1 setlinewidth
+
+        % Spine Borders
+        1 0 1 setrgbcolor
+        newpath
+          PAGE_WIDTH 0 moveto
+          PAGE_WIDTH PAGE_HEIGHT lineto
+          stroke
+        newpath
+          dup 0 moveto
+          dup PAGE_HEIGHT lineto
+          stroke
+
+        % Page Inner Borders
+        0 1 1 setrgbcolor
+        newpath
+          PAGE_WIDTH SPINE_CLEAR sub 0 moveto
+          PAGE_WIDTH SPINE_CLEAR sub PAGE_HEIGHT lineto
+          stroke
+        newpath
+          dup SPINE_CLEAR add 0 moveto
+          dup SPINE_CLEAR add PAGE_HEIGHT lineto
+          stroke
+
+        % Page Inner Margin Border
+        0 0 1 setrgbcolor
+        newpath
+          PAGE_WIDTH SPINE_MARGIN sub 0 moveto
+          PAGE_WIDTH SPINE_MARGIN sub PAGE_HEIGHT lineto
+          stroke
+        newpath
+          dup SPINE_MARGIN add 0 moveto
+          SPINE_MARGIN add PAGE_HEIGHT lineto
+          stroke
+
+        % Bleed Border
+        1 0 0 setrgbcolor
+        0 0 2 index PAGE_HEIGHT rectstroke
+
+        % Page Outer Border
+        1 1 0 setrgbcolor
+        BLEED BLEED
+          2 index BLEED 2 mul sub
+          PAGE_HEIGHT BLEED 2 mul sub
+          rectstroke
+
+        % Page Outer Margin Border
+        0 1 0 setrgbcolor
+        MARGIN MARGIN
+          3 -1 roll MARGIN 2 mul sub
+          PAGE_HEIGHT MARGIN 2 mul sub
+          rectstroke
+
+        grestore
+    } if
+} bind def

@@ -1,0 +1,13 @@
+documentclass: scrbook
+classoption:
+- paper=6in:9in
+- BCOR=0.125in
+indent: yes
+header-includes: |
+    ```{=latex}
+    \renewcommand{\partformat}{}
+
+    \makeatletter{}
+    \extratitle{\vspace*{4\baselineskip}\begin{center}\usekomafont{title}\Huge\@title\end{center}}
+    \makeatother{}
+    ```

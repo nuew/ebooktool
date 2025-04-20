@@ -1,0 +1,123 @@
+/* Body */
+@page { margin: 10px; }
+* { margin: 0; padding: 0; border: 0; vertical-align: baseline; }
+body {
+    font-family: "Garamond", serif;
+    font-size: medium;
+    margin: 5%;
+
+    /* Font Rendering */
+    font-kerning: normal;
+    font-variant: common-ligatures contextual oldstyle-nums proportional-nums;
+    text-rendering: optimizeLegibility;
+}
+p {
+    hyphenate-lines: 3;
+    hyphens: auto;
+    line-height: 1.4;
+    margin: 0 auto; 
+    orphans: 2;
+    text-align: justify;
+    text-indent: 1.5em;
+    widows: 2;
+    word-wrap: break-word;
+}
+a, a:visited { color: inherit !important; }
+img { max-width: 100%; }
+hr {
+    border: none;
+    border-top: solid;
+    color: inherit;
+    margin: 1.4em auto;
+    page-break-after: avoid;
+    page-break-before: avoid;
+    page-break-inside: avoid;
+    text-align: center;
+    width: 50%;
+}
+
+/* Headings */
+h1 {
+    font-size: 2em;
+    page-break-before: always;
+    line-height: 150%;
+}
+h1, h2, h3, h4, h5, h6 {
+    margin: 1em 0 0 0;
+    font-family: sans-serif;
+    hyphens: none;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+    text-align: left;
+    text-indent: 0;
+}
+.header-section-number { margin-right: 0.5em; }
+/* would use p + p, but that doesn't really work in Google Play Books, probably
+ * because of <https://bit.ly/3f5CWwm>. This works, but is uglier :( */
+h1 + p, p:first-of-type { text-indent: 0; }
+
+/* Table of Contents */
+#toc li { list-style: none; }
+#toc ul { padding-left: 1.3em; }
+nav#toc ol, nav#landmarks ol { padding: 0; margin-left: 1em; }
+nav#toc ol li, nav#landmarks ol li { list-style-type: none; margin: 0; padding: 0; }
+#toc a:not(:hover) { text-decoration: none; }
+.section-header-number { font-variant: tabular-nums; }
+
+/* Cover Page */
+#cover, #cover-image {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+    text-align: center;
+    width: 100%;
+}
+
+/* Title Page */
+.titlepage, .titlepage * {
+    text-align: center;
+    text-indent: 0;
+}
+.main {
+    font-size: xx-large;
+    font-style: bold;
+    margin: 10% auto 0 auto;
+    padding-bottom: 0;
+}
+.subtitle, .edition { font-size: large; margin-top: 0; padding-top: 0; }
+
+/* Copyright Page */
+.copyrightpage, .copyrightpage * {
+    text-align: center;
+    text-indent: 0;
+    font-size: x-small;
+}
+.rights { margin: 1em auto; }
+
+/* Dedication */
+.dedication, .dedication p {
+    text-align: center;
+    text-indent: 0;
+    font-size: large;
+}
+
+/* Vertically Centered Pages */
+.dedication {
+    margin-top: 40%;
+    page-break-inside: avoid;
+}
+@supports (transform: translateY(-50%)) {
+    /* Better centering if supported */
+    .copyrightpage, .dedication, .authorpage {
+        margin-top: 50vh;
+        transform: translateY(-50%);
+        page-break-inside: avoid;
+    }
+}
+
+/* Compatability / Pandoc */
+span.smallcaps { font-variant: small-caps; }
+span.underline { text-decoration: underline; }
+div.hanging-indent { margin-left: 1.5em; text-indent: -1.5em; }
