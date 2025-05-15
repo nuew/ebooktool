@@ -1,4 +1,4 @@
-SHELL		::= /bin/sh
+SHELL		::= /bin/bash
 PANDOC		::= pandoc
 PANDOCFLAGS	::= --number-sections --toc --pdf-engine=lualatex
 GHOSTSCRIPT	::= gs
